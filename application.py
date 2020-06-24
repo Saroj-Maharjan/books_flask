@@ -28,14 +28,6 @@ db = scoped_session(sessionmaker(bind=engine))
 # goodread api
 # res = requests.get("https://www.goodreads.com/book/review_counts.json", params={"key": "Ph0EuZD75IDuHEVx5VQKAg", "isbns": "9781632168146"})
 
-@app.before_request
-def before_request():
-    g.user = None
-    if 'user_id' in session:
-        user = [x for x in users if x.id == session['user_id']][0]
-        g.user = user
-
-
 @app.route("/")
 def index():
     return render_template("dashboard.html")
