@@ -3,3 +3,9 @@ Flask-Session
 psycopg2-binary
 SQLAlchemy
 flask-wtf
+passlib
+Jinja2
+
+# Heroku
+psycopg2
+gunicorn

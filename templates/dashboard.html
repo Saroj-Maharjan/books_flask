@@ -14,6 +14,26 @@ Book Store
   </ul>
 {% endblock %}
 
-{% block body %}
-
-{% endblock %}
+{% block content %}
+<h3>Search for a book!</h3>
+    <form action="" method="GET">
+      <fieldset class="form-group">
+        <div class="form-group">
+          {{ form.books.label(class = "form-control-label") }}
+          {% if form.books.errors %}
+                    {{ form.books(class = "form-control form-control-lg is-invalid") }}
+                    <div class="invalid-feedback">
+                        {% for error in form.books.errors %}
+                            <span>{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    {{ form.books(class = "form-control form-control-lg") }}
+                {% endif %}
+        </div>
+      </fieldset>
+      <div class="form-group">
+        {{ form.submit(class = "btn btn-outline-info") }}
+      </div>
+    </form>
+{% endblock content %}

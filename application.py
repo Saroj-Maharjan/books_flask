@@ -4,8 +4,11 @@ from flask import Flask, session, render_template, redirect, url_for, request, f
 from flask_session import Session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
-from forms import RegistrationForm, LoginForm
+
+from forms import RegistrationForm, LoginForm, SearchForm
+
 from passlib.hash import sha256_crypt
+from helpers import login_required
 
 
 app = Flask(__name__)
@@ -29,15 +32,15 @@ db = scoped_session(sessionmaker(bind=engine))
 # res = requests.get("https://www.goodreads.com/book/review_counts.json", params={"key": "Ph0EuZD75IDuHEVx5VQKAg", "isbns": "9781632168146"})
 
 @app.route("/")
+@login_required
 def index():
-    return render_template("dashboard.html")
-
+    form = SearchForm()
+    return render_template("dashboard.html", form=form)
 
 @app.route("/about")
 def about():
-    return "/Test"
-
-
+    return "Test"
+  
 @app.route("/login", methods=["GET", "POST"])
 def login():
     form=LoginForm()
@@ -90,5 +93,31 @@ def register():
 
     return render_template("register.html", title="Register", form=form)
 
-if __name__ == '__main__':
-    app.run(debug=True)
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash("Logout successful")
+    return redirect(url_for('index'))
+
+@app.route("/search", methods=["GET"])
+@login_required
+def search():
+    form = SearchForm()
+    """ Get books results """
+    # Check book id was provided
+    if form.validate_on_submit():
+        search = form.search.data
+
+        books = db.execute("SELECT isbn, title, author, year FROM books WHERE \
+                        isbn LIKE :query OR \
+                        title LIKE :query OR \
+                        author LIKE :query LIMIT 15",
+                        {"query": query}).fetchAll()
+        if books in None:
+            flash(f'No Book Found {form.search.data}!')
+            return redirect(url_for("index"))
+        else:
+            return render_template("result.html",books=books)
+    return redirect(url_for('index'))
+
+
