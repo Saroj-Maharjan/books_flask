@@ -1,3 +1,4 @@
+certifi
 Flask
 Flask-Session
 psycopg2-binary
@@ -5,6 +6,8 @@ SQLAlchemy
 flask-wtf
 passlib
 Jinja2
+WTForms
+email_validator
 
 # Heroku
 psycopg2

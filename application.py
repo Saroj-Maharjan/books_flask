@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, session, render_template, redirect, url_for, request, flash
+from flask import Flask, session, render_template, redirect, url_for, request, flash, jsonify
 from flask_session import Session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -106,18 +106,28 @@ def search():
     """ Get books results """
     # Check book id was provided
     if form.validate_on_submit():
-        search = form.search.data
-
+        search = form.books.data
         books = db.execute("SELECT isbn, title, author, year FROM books WHERE \
                         isbn LIKE :query OR \
                         title LIKE :query OR \
                         author LIKE :query LIMIT 15",
                         {"query": query}).fetchAll()
+        print(books)
         if books in None:
-            flash(f'No Book Found {form.search.data}!')
+            flash(f'No Book Found {form.books.data}!')
             return redirect(url_for("index"))
         else:
             return render_template("result.html",books=books)
+
     return redirect(url_for('index'))
 
-
+@app.route('/autocomplete/<string:text>')
+def autocomplete(text):
+    text = f"%{text}%".lower()
+    result = db.execute(
+        "SELECT * FROM books WHERE LOWER(books.original_title) LIKE :text OR LOWER(books.authors) LIKE :text OR books.original_publication_year LIKE :text ORDER BY id LIMIT 10",
+        {"text": text}).fetchall()
+    response = []
+    for row in result:
+        response.append([row.original_title, row.authors, row.original_publication_year])
+    return jsonify(response)
