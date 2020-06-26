@@ -19,16 +19,16 @@ Book Store
     <form action="" method="GET">
       <fieldset class="form-group">
         <div class="form-group">
-          {{ form.books.label(class = "form-control-label") }}
-          {% if form.books.errors %}
-                    {{ form.books(class = "form-control form-control-lg is-invalid") }}
+          {{ form.book.label(class = "form-control-label") }}
+          {% if form.book.errors %}
+                    {{ form.book(class = "form-control form-control-lg is-invalid") }}
                     <div class="invalid-feedback">
-                        {% for error in form.books.errors %}
+                        {% for error in form.book.errors %}
                             <span>{{ error }}</span>
                         {% endfor %}
                     </div>
                 {% else %}
-                    {{ form.books(class = "form-control form-control-lg") }}
+                    {{ form.book(class = "form-control form-control-lg") }}
                 {% endif %}
         </div>
       </fieldset>
@@ -36,4 +36,17 @@ Book Store
         {{ form.submit(class = "btn btn-outline-info") }}
       </div>
     </form>
+
+    {% for book in books %}
+    <article class="media content-section">
+        <div class="media-body">
+          <h2><a class="article-title" href="/book/{{book['isbn']}}">{{ book['title'] }}</a></h2>
+          <p class="article-content">written by: {{book['author']}}</p>
+          <div class="article-metadata">
+            <small class="text-muted">Published Data: {{ book['year'] }}</small>
+            <small class="text-muted">ISBN: {{ book['isbn'] }}</small>
+          </div>
+        </div>
+      </article>
+    {% endfor %}
 {% endblock content %}

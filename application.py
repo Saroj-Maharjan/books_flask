@@ -35,7 +35,27 @@ db = scoped_session(sessionmaker(bind=engine))
 @login_required
 def index():
     form = SearchForm()
-    return render_template("dashboard.html", form=form)
+    if request.args.get("book"):
+        # Take input and add a wildcard
+        query = "%" + request.args.get('book') + "%"
+
+        # Capitalize all words of input for search
+        query = query.title()
+
+        rows = db.execute("SELECT isbn, title, author, year FROM books WHERE isbn LIKE :search OR title LIKE :search OR author LIKE :search",
+                {"search": query})
+
+        # Books not founded
+        if rows.rowcount == 0:
+            flash(f'No Book Found {form.books.data}!')
+            return redirect(url_for('index'))
+        
+        # Fetch all the results
+        books = rows.fetchall()
+
+        return render_template("dashboard.html",title = "Home", form=form, books=books)
+    
+    return render_template("dashboard.html",title = "Home", form=form)
 
 @app.route("/about")
 def about():
@@ -43,6 +63,10 @@ def about():
   
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    if session.get("loggedin"):
+        flash("You are already logged in", "danger")
+        return redirect(url_for('index'))
+    
     form=LoginForm()
     if form.validate_on_submit():
         email=form.email.data
@@ -69,6 +93,10 @@ def login():
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
+    if session.get("loggedin"):
+        flash("You are already logged in", "danger")
+        return redirect(url_for('index'))
+    
     form=RegistrationForm()
     if form.validate_on_submit():
         username=form.username.data
@@ -99,28 +127,6 @@ def logout():
     flash("Logout successful")
     return redirect(url_for('index'))
 
-@app.route("/search", methods=["GET"])
-@login_required
-def search():
-    form = SearchForm()
-    """ Get books results """
-    # Check book id was provided
-    if form.validate_on_submit():
-        search = form.books.data
-        books = db.execute("SELECT isbn, title, author, year FROM books WHERE \
-                        isbn LIKE :query OR \
-                        title LIKE :query OR \
-                        author LIKE :query LIMIT 15",
-                        {"query": query}).fetchAll()
-        print(books)
-        if books in None:
-            flash(f'No Book Found {form.books.data}!')
-            return redirect(url_for("index"))
-        else:
-            return render_template("result.html",books=books)
-
-    return redirect(url_for('index'))
-
 @app.route('/autocomplete/<string:text>')
 def autocomplete(text):
     text = f"%{text}%".lower()
@@ -131,3 +137,7 @@ def autocomplete(text):
     for row in result:
         response.append([row.original_title, row.authors, row.original_publication_year])
     return jsonify(response)
+
+@app.route('/book/<code>',methods=['GET','POST'])
+def book(code):
+    return "HELP"
