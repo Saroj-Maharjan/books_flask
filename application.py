@@ -5,10 +5,12 @@ from flask_session import Session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 
-from forms import RegistrationForm, LoginForm, SearchForm
+from forms import RegistrationForm, LoginForm, SearchForm, BookDetailForm
 
 from passlib.hash import sha256_crypt
 from helpers import login_required
+
+import requests
 
 
 app = Flask(__name__)
@@ -43,35 +45,33 @@ def index():
         query = query.title()
 
         rows = db.execute("SELECT isbn, title, author, year FROM books WHERE isbn LIKE :search OR title LIKE :search OR author LIKE :search",
-                {"search": query})
+                          {"search": query})
 
         # Books not founded
         if rows.rowcount == 0:
-            flash(f'No Book Found {form.books.data}!')
+            flash(
+                f'No Book Found {request.args.get("book")} "\n" Try Again !!', 'danger')
             return redirect(url_for('index'))
-        
+
         # Fetch all the results
         books = rows.fetchall()
 
-        return render_template("dashboard.html",title = "Home", form=form, books=books)
-    
-    return render_template("dashboard.html",title = "Home", form=form)
+        return render_template("dashboard.html", title="Home", form=form, books=books)
 
-@app.route("/about")
-def about():
-    return "Test"
-  
+    return render_template("dashboard.html", title="Home", form=form)
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if session.get("loggedin"):
         flash("You are already logged in", "danger")
         return redirect(url_for('index'))
-    
-    form=LoginForm()
+
+    form = LoginForm()
     if form.validate_on_submit():
-        email=form.email.data
-        password=form.password.data
-        account=db.execute(
+        email = form.email.data
+        password = form.password.data
+        account = db.execute(
             "SELECT * FROM users WHERE email = :email", {"email": email}).fetchone()
 
         if account is None:
@@ -79,9 +79,9 @@ def login():
 
         else:
             if sha256_crypt.verify(password, account['password']):
-                session["loggedin"]=True
-                session["user_id"]=account["id"]
-                session["username"]=account["username"]
+                session["loggedin"] = True
+                session["user_id"] = account["id"]
+                session["username"] = account["username"]
                 flash('You have been logged in!', 'success')
                 # Redirect to home page
                 return redirect(url_for("index"))
@@ -96,17 +96,17 @@ def register():
     if session.get("loggedin"):
         flash("You are already logged in", "danger")
         return redirect(url_for('index'))
-    
-    form=RegistrationForm()
-    if form.validate_on_submit():
-        username=form.username.data
-        fname=form.fname.data
-        lname=form.lname.data
-        email=form.email.data
-        password=form.password.data
-        secure_password=sha256_crypt.encrypt(str(password))
 
-        account=db.execute(
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        username = form.username.data
+        fname = form.fname.data
+        lname = form.lname.data
+        email = form.email.data
+        password = form.password.data
+        secure_password = sha256_crypt.encrypt(str(password))
+
+        account = db.execute(
             "SELECT * FROM users where username = :username OR email = :email", {"username": username, "email": email}).fetchone()
 
         if account is None:
@@ -127,17 +127,59 @@ def logout():
     flash("Logout successful")
     return redirect(url_for('index'))
 
-@app.route('/autocomplete/<string:text>')
-def autocomplete(text):
-    text = f"%{text}%".lower()
-    result = db.execute(
-        "SELECT * FROM books WHERE LOWER(books.original_title) LIKE :text OR LOWER(books.authors) LIKE :text OR books.original_publication_year LIKE :text ORDER BY id LIMIT 10",
-        {"text": text}).fetchall()
-    response = []
-    for row in result:
-        response.append([row.original_title, row.authors, row.original_publication_year])
-    return jsonify(response)
 
-@app.route('/book/<code>',methods=['GET','POST'])
-def book(code):
-    return "HELP"
+@app.route('/book/<string:isbn>', methods=['GET', 'POST'])
+@login_required
+def book(isbn):
+    form = BookDetailForm()
+
+    if form.validate_on_submit():
+        return "Post Method Success"
+    else:
+        row = db.execute("SELECT isbn, title, author, year FROM books WHERE isbn = :isbn",
+                        {"isbn": isbn})
+
+        bookInfo = row.fetchall()
+
+        """ GOODREADS reviews """
+
+        # Read API key from env variable
+        query = requests.get("https://www.goodreads.com/book/review_counts.json",
+                            params={"key": "Ph0EuZD75IDuHEVx5VQKAg", "isbns": isbn})
+
+        # Convert the response to JSON
+        response = query.json()
+
+        # "Clean" the JSON before passing it to the bookInfo list
+        response = response['books'][0]
+
+        # Append it as the second element on the list. [1]
+        bookInfo.append(response)
+
+        """ Users reviews """
+
+        # Search book_id by ISBN
+        row = db.execute("SELECT isbn FROM books WHERE isbn = :isbn",
+                        {"isbn": isbn})
+
+        # Save id into variable
+        book = row.fetchone()  # (id,)
+        book = book[0]
+
+        # Fetch book reviews
+        # Date formatting (https://www.postgresql.org/docs/9.1/functions-formatting.html)
+        
+        # results = db.execute("SELECT users.username, comment, rating to_char(time, 'DD Mon YY - HH24:MI:SS') as time FROM users INNER JOIN reviews ON users.id = reviews.user_id WHERE book_id = :book ORDER BY time",
+        #                      {"book": book})
+
+        results = db.execute(
+            "SELECT reviews.review, users.username, reviews.review, reviews.time, reviews.user_id, reviews.rating FROM reviews LEFT JOIN users ON reviews.user_id = users.id WHERE reviews.book_id LIKE :id",
+            {"id": book_id}).fetchall()
+
+        reviews = results.fetchall()
+
+        return reviews
+
+        # return render_template('detail.html', title="Detail", form=form, bookInfo=bookInfo, reviews = reviews)
+
+    return redirect(url_for('index'))

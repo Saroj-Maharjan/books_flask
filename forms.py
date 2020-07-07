@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, BooleanField
+from wtforms import StringField, PasswordField, SubmitField, BooleanField, SelectField
 from wtforms.validators import DataRequired, Length, Email, EqualTo
 
 class RegistrationForm(FlaskForm):
@@ -22,3 +22,8 @@ class LoginForm(FlaskForm):
 class SearchForm(FlaskForm):
     book = StringField("ISBN, Title or Author", validators = [DataRequired()])
     submit = SubmitField('Search')
+
+class BookDetailForm(FlaskForm):
+    comment = StringField("Comment about the Book", validators = [DataRequired()])
+    rating = SelectField("Rating", choices =[1,2,3,4,5])
+    submit = SubmitField("Submit")
