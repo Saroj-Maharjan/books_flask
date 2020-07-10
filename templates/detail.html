@@ -4,31 +4,79 @@
 Book Detail
 {% endblock title %}
 
-{% block body %}
+{% block content %}
 
-<div class="row book-container">
-    <div class="col-sm-4">
-        <img src="http://covers.openlibrary.org/b/isbn/{{bookInfo[0]['isbn']}}-M.jpg" width="130px">    
-    </div>
-    <div class="col-sm-4">
-        <h1>{{bookInfo[0]['title']}}</h1>
-        <h5>Author: {{bookInfo[0]['author']}}</h5>
-        <h5>Published: {{bookInfo[0]['year']}}</h5>
-        <h5>ISBN-10: {{bookInfo[0]['isbn']}}</h5>
-    </div>
-
-    <!--GOODREADS REVIEWS -->
-    <div class="col-sm-4">
-        <img class="mb-3" src="../static/goodreads.jpg" alt="Goodreads" width="200" height="45">
-        <h5>Nº of Ratings: {{bookInfo[1]['work_ratings_count']}}</h5>
-        <h5>Average Rating: {{bookInfo[1]['average_rating']}}</h5>
-        <h5>
-            <a href="https://www.goodreads.com/search?q={{bookInfo[0]['title']}}">Goodreads page</a>
-        </h5>
+<div class="jumbotron">
+    <h1 style="text-align: center">{{ book[0]['title'] }}</h1>
+    <div class="row book-container">
+        <div class="col-sm-4">
+            <img src="http://covers.openlibrary.org/b/isbn/{{ book[0]['isbn'] }}-M.jpg" width="130px">
+        </div>
+        <div class="col-sm-4">
+            <h5>Author: {{ book[0]['author'] }}</h5>
+            <h5>Published: {{ book[0]['year'] }}</h5>
+            <h5>ISBN-10: {{ book[0]['isbn'] }}</h5>
+        </div>
+        <div class="col-sm-4">
+            <h5>Nº of Ratings: {{ book[1]['work_ratings_count'] }}</h5>
+            <h5>Average Rating: {{ book[1]['average_rating'] }}</h5>
+        </div>
     </div>
 </div>
 
+<div class="content-section">
+    <form class="form-border" method="POST">
+        {{ form.hidden_tag() }}
+        <fieldset class="form-group">
+            <div class="form-group">
+                {{ form.rating.label(class = "form-control-label") }}
+                {% if form.rating.errors %}
+                {{ form.rating(class = "form-control form-control-lg is-invalid") }}
+                <div class="invalid-feedback">
+                    {% for error in form.rating.errors %}
+                    <span>{{ error }}</span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                {{ form.rating(class = "form-control form-control-lg") }}
+                {% endif %}
+            </div>
 
+            <div class="form-group">
+                {{ form.comment.label(class = "form-control-label") }}
+                {% if form.comment.errors %}
+                {{ form.comment(class = "form-control form-control-lg is-invalid") }}
+                <div class="invalid-feedback">
+                    {% for error in form.comment.errors %}
+                    <span>{{ error }}</span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                {{ form.comment(class = "form-control form-control-lg") }}
+                {% endif %}
+            </div>
+        </fieldset>
+        <div class="form-group">
+            {{ form.submit(class = "btn btn-outline-info") }}
+        </div>
+    </form>
 
-
-{% endblock body %}
+    <!-- REVIEW LIST -->
+    <div id="userReviews">
+        <h2></h2>
+        {% for review in reviews %}
+        <div class="list-group">
+            <a href="#" class="list-group-item list-group-item-action flex-column align-items-start">
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1" style="color:burlywood">{{review['username']}} said...</h6>
+                    <small>{{review['time']}}</small>
+                </div>
+                <p class="mb-1">{{review['comment']}}</p>
+                <small>Rated: {{review['rating']}}</small>
+            </a>
+            <div class="dropdown-divider"></div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock content %}

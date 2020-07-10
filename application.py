@@ -11,6 +11,7 @@ from passlib.hash import sha256_crypt
 from helpers import login_required
 
 import requests
+import math
 
 
 app = Flask(__name__)
@@ -33,19 +34,18 @@ db = scoped_session(sessionmaker(bind=engine))
 # goodread api
 # res = requests.get("https://www.goodreads.com/book/review_counts.json", params={"key": "Ph0EuZD75IDuHEVx5VQKAg", "isbns": "9781632168146"})
 
+
 @app.route("/")
 @login_required
 def index():
     form = SearchForm()
     if request.args.get("book"):
-        # Take input and add a wildcard
-        query = "%" + request.args.get('book') + "%"
+        text = request.args.get("book")
+         # Take input and add a wildcard
+        query = f"%{text}%".lower()
 
-        # Capitalize all words of input for search
-        query = query.title()
-
-        rows = db.execute("SELECT isbn, title, author, year FROM books WHERE isbn LIKE :search OR title LIKE :search OR author LIKE :search",
-                          {"search": query})
+        rows = db.execute("SELECT book_id, isbn, title, author, year FROM books WHERE isbn LIKE :search OR title LIKE :search OR author LIKE :search",
+                            {"search": query})
 
         # Books not founded
         if rows.rowcount == 0:
@@ -121,6 +121,7 @@ def register():
 
     return render_template("register.html", title="Register", form=form)
 
+
 @app.route('/logout')
 def logout():
     session.clear()
@@ -128,58 +129,36 @@ def logout():
     return redirect(url_for('index'))
 
 
-@app.route('/book/<string:isbn>', methods=['GET', 'POST'])
+@app.route('/book/<int:book_id>', methods=['GET', 'POST'])
 @login_required
-def book(isbn):
+def book(book_id):
     form = BookDetailForm()
 
     if form.validate_on_submit():
         return "Post Method Success"
     else:
-        row = db.execute("SELECT isbn, title, author, year FROM books WHERE isbn = :isbn",
-                        {"isbn": isbn})
-
+        row = db.execute("SELECT * FROM books WHERE book_id =:id",
+                         {"id": book_id})
+        
         bookInfo = row.fetchall()
 
         """ GOODREADS reviews """
-
-        # Read API key from env variable
         query = requests.get("https://www.goodreads.com/book/review_counts.json",
-                            params={"key": "Ph0EuZD75IDuHEVx5VQKAg", "isbns": isbn})
-
-        # Convert the response to JSON
+                           params={"key": "Ph0EuZD75IDuHEVx5VQKAg", "isbns": bookInfo[0]['isbn']})
+        
+        #Convert and clean the response
         response = query.json()
-
-        # "Clean" the JSON before passing it to the bookInfo list
         response = response['books'][0]
 
-        # Append it as the second element on the list. [1]
         bookInfo.append(response)
 
         """ Users reviews """
+        reviews = db.execute(
+            "SELECT reviews.review, users.username, reviews.date, reviews.time, reviews.user_id, reviews.rating FROM reviews \
+            LEFT JOIN users ON reviews.user_id = users.id \
+            WHERE reviews.book_id=:id",
+            {"id": bookInfo[0]['book_id']}).fetchall()
 
-        # Search book_id by ISBN
-        row = db.execute("SELECT isbn FROM books WHERE isbn = :isbn",
-                        {"isbn": isbn})
-
-        # Save id into variable
-        book = row.fetchone()  # (id,)
-        book = book[0]
-
-        # Fetch book reviews
-        # Date formatting (https://www.postgresql.org/docs/9.1/functions-formatting.html)
-        
-        # results = db.execute("SELECT users.username, comment, rating to_char(time, 'DD Mon YY - HH24:MI:SS') as time FROM users INNER JOIN reviews ON users.id = reviews.user_id WHERE book_id = :book ORDER BY time",
-        #                      {"book": book})
-
-        results = db.execute(
-            "SELECT reviews.review, users.username, reviews.review, reviews.time, reviews.user_id, reviews.rating FROM reviews LEFT JOIN users ON reviews.user_id = users.id WHERE reviews.book_id LIKE :id",
-            {"id": book_id}).fetchall()
-
-        reviews = results.fetchall()
-
-        return reviews
-
-        # return render_template('detail.html', title="Detail", form=form, bookInfo=bookInfo, reviews = reviews)
+        return render_template("detail.html", form=form, book = bookInfo , reviews = reviews, title= bookInfo[0]['title'])
 
     return redirect(url_for('index'))

@@ -34,14 +34,14 @@ db = scoped_session(sessionmaker(bind=engine))
 #     reader = csv.reader(f)
 #     for isbn, title, author, year in reader:
 #         db.execute("INSERT INTO books (isbn, title, author, year) VALUES (:isbn, :title, :author, :year)",
-#                     {"isbn": isbn, 
+#                     {"isbn": isbn,
 #                     "title": title,
 #                     "author": author,
 #                     "year": year})
 
 #         print(f"Added book {title} to database.")
 #         db.commit()
-    
+
 
 def main():
     # db.execute("CREATE TABLE users (id SERIAL PRIMARY KEY, fname VARCHAR NOT NULL, lname VARCHAR NOT NULL, username VARCHAR NOT NULL, email VARCHAR NOT NULL, password VARCHAR NOT NULL)")
@@ -49,18 +49,20 @@ def main():
     db.execute("DROP TABLE IF EXISTS \"books\"")
     db.execute("CREATE TABLE books (book_id SERIAL PRIMARY KEY, isbn VARCHAR NOT NULL,title VARCHAR NOT NULL,author VARCHAR NOT NULL,year VARCHAR NOT NULL)")
     
-    f = open("books.csv")
-    reader = csv.reader(f)
+    with open('books.csv', 'r') as csvfile:
+        csvreader = csv.reader(csvfile)
+        next(csvreader)
 
-    for isbn, title, author, year in reader:
-        db.execute("INSERT INTO books (isbn, title, author, year) VALUES (:isbn, :title, :author, :year)",
-                    {"isbn": isbn, 
-                    "title": title,
-                    "author": author,
-                    "year": year})
+        for isbn, title, author, year in csvreader:
+            db.execute("INSERT INTO books (isbn, title, author, year) VALUES (:isbn, :title, :author, :year)",
+                        {"isbn": isbn, 
+                        "title": title,
+                        "author": author,
+                        "year": year})
 
-        print(f"Added book {title} to database.")
-        db.commit()
+            print(f"Added book {title} to database.")
+            db.commit()
+
 
 if __name__ == "__main__":
     main()

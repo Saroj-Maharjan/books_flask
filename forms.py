@@ -23,7 +23,12 @@ class SearchForm(FlaskForm):
     book = StringField("ISBN, Title or Author", validators = [DataRequired()])
     submit = SubmitField('Search')
 
+
+def choiceValidator(form, field):
+    if field.data == -1:
+        raise ValidationError('Please select rating!!!')
+
 class BookDetailForm(FlaskForm):
     comment = StringField("Comment about the Book", validators = [DataRequired()])
-    rating = SelectField("Rating", choices =[1,2,3,4,5])
+    rating = SelectField("Rating", choices =[1,2,3,4,5], validators= [DataRequired(), choiceValidator ])
     submit = SubmitField("Submit")
