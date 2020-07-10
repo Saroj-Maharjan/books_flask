@@ -50,7 +50,7 @@ def index():
         # Books not founded
         if rows.rowcount == 0:
             flash(
-                f'No Book Found {request.args.get("book")} "\n" Try Again !!', 'danger')
+                f'No Book Found "{request.args.get("book")}" Try Again !!', 'danger')
             return redirect(url_for('index'))
 
         # Fetch all the results
@@ -133,32 +133,92 @@ def logout():
 @login_required
 def book(book_id):
     form = BookDetailForm()
+    row = db.execute("SELECT * FROM books WHERE book_id =:id",
+                         {"id": book_id})
+    bookInfo = row.fetchall()
 
     if form.validate_on_submit():
-        return "Post Method Success"
-    else:
-        row = db.execute("SELECT * FROM books WHERE book_id =:id",
-                         {"id": book_id})
+        # Save current user info
+        currentUser = session["user_id"]
+
+        # Fetch form data
+        rating = request.form.get("rating")
+        comment = request.form.get("comment")
+
+        # Check for user submission (ONLY 1 review/user allowed per book)
+        row2 = db.execute("SELECT * FROM reviews WHERE user_id = :user_id AND book_id = :book_id",
+                    {"user_id": currentUser,
+                     "book_id": bookInfo[0]['book_id']})
+        # A review already exists
+        if row2.rowcount == 1:
+            flash('You already submitted a review for this book', 'warning')
+            return redirect( url_for('book', book_id = bookInfo[0]['book_id']))
         
-        bookInfo = row.fetchall()
+        rating = int(rating)
+        db.execute("INSERT INTO reviews (user_id, book_id, comment, rating) VALUES \
+                    (:user_id, :book_id, :comment, :rating)",
+                    {"user_id": currentUser, 
+                    "book_id": bookInfo[0]['book_id'], 
+                    "comment": comment, 
+                    "rating": rating})
+        # Commit transactions to DB and close the connection
+        db.commit()
 
-        """ GOODREADS reviews """
-        query = requests.get("https://www.goodreads.com/book/review_counts.json",
-                           params={"key": "Ph0EuZD75IDuHEVx5VQKAg", "isbns": bookInfo[0]['isbn']})
-        
-        #Convert and clean the response
-        response = query.json()
-        response = response['books'][0]
+        flash('Review submitted!', 'info')
 
-        bookInfo.append(response)
+        return redirect( url_for('book', book_id = bookInfo[0]['book_id']))
 
-        """ Users reviews """
-        reviews = db.execute(
-            "SELECT reviews.review, users.username, reviews.date, reviews.time, reviews.user_id, reviews.rating FROM reviews \
-            LEFT JOIN users ON reviews.user_id = users.id \
-            WHERE reviews.book_id=:id",
-            {"id": bookInfo[0]['book_id']}).fetchall()
 
-        return render_template("detail.html", form=form, book = bookInfo , reviews = reviews, title= bookInfo[0]['title'])
+    """ GOODREADS reviews """
+    query = requests.get("https://www.goodreads.com/book/review_counts.json",
+                        params={"key": "Ph0EuZD75IDuHEVx5VQKAg", "isbns": bookInfo[0]['isbn']})
+    
+    #Convert and clean the response
+    response = query.json()
+    response = response['books'][0]
 
-    return redirect(url_for('index'))
+    bookInfo.append(response)
+
+    """ Users reviews """
+    reviews = db.execute(
+        "SELECT reviews.comment, users.username, reviews.timestamp, reviews.user_id, reviews.rating FROM reviews \
+        LEFT JOIN users ON reviews.user_id = users.id \
+        WHERE reviews.book_id=:id",
+        {"id": bookInfo[0]['book_id']}).fetchall()
+
+    return render_template("detail.html", form=form, book = bookInfo , reviews = reviews, title= bookInfo[0]['title'])
+
+
+@app.route("/api/<isbn>", methods=['GET'])
+@login_required
+def api_call(isbn):
+
+    # COUNT returns rowcount
+    # SUM returns sum selected cells' values
+    # INNER JOIN associates books with reviews tables
+
+    row = db.execute("SELECT title, author, year, isbn, \
+                    COUNT(reviews.id) as review_count, \
+                    AVG(reviews.rating) as average_score \
+                    FROM books \
+                    INNER JOIN reviews \
+                    ON books.book_id = reviews.book_id \
+                    WHERE isbn = :isbn \
+                    GROUP BY title, author, year, isbn",
+                    {"isbn": isbn})
+
+    # Error checking
+    if row.rowcount != 1:
+        return jsonify({"Error": "Invalid book ISBN"}), 422
+
+    # Fetch result from RowProxy    
+    tmp = row.fetchone()
+
+    # Convert to dict
+    result = dict(tmp.items())
+
+    # Round Avg Score to 2 decimal. This returns a string which does not meet the requirement.
+    # https://floating-point-gui.de/languages/python/
+    result['average_score'] = float('%.2f'%(result['average_score']))
+
+    return jsonify(result)

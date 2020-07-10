@@ -45,7 +45,9 @@ db = scoped_session(sessionmaker(bind=engine))
 
 def main():
     # db.execute("CREATE TABLE users (id SERIAL PRIMARY KEY, fname VARCHAR NOT NULL, lname VARCHAR NOT NULL, username VARCHAR NOT NULL, email VARCHAR NOT NULL, password VARCHAR NOT NULL)")
-    # db.execute("CREATE TABLE reviews (isbn VARCHAR NOT NULL,review VARCHAR NOT NULL, rating INTEGER NOT NULL,username VARCHAR NOT NULL)")
+    # db.execute("CREATE TABLE reviews (id SERIAL PRIMARY KEY, book_id INTEGER NOT NULL,\
+    #     user_id INTEGER NOT NULL, comment VARCHAR NOT NULL,\
+    #     rating INTEGER NOT NULL, timestamp timestamp default current_timestamp)")
     db.execute("DROP TABLE IF EXISTS \"books\"")
     db.execute("CREATE TABLE books (book_id SERIAL PRIMARY KEY, isbn VARCHAR NOT NULL,title VARCHAR NOT NULL,author VARCHAR NOT NULL,year VARCHAR NOT NULL)")
     

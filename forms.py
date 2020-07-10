@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, BooleanField, SelectField
-from wtforms.validators import DataRequired, Length, Email, EqualTo
+from wtforms.validators import DataRequired, Length, Email, EqualTo, InputRequired
 
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators = [DataRequired(), Length(min= 5, max= 20)])
@@ -30,5 +30,5 @@ def choiceValidator(form, field):
 
 class BookDetailForm(FlaskForm):
     comment = StringField("Comment about the Book", validators = [DataRequired()])
-    rating = SelectField("Rating", choices =[1,2,3,4,5], validators= [DataRequired(), choiceValidator ])
+    rating = SelectField("Rating", choices = [('1', 1), ('2', 2), ('3', 3), ('4', 4), ('5', 5)], default= '3')
     submit = SubmitField("Submit")
