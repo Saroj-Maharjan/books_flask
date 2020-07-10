@@ -8,6 +8,7 @@ passlib
 Jinja2
 WTForms
 email_validator
+requests
 
 # Heroku
 psycopg2
