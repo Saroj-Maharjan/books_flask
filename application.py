@@ -11,7 +11,6 @@ from passlib.hash import sha256_crypt
 from helpers import login_required
 
 import requests
-import math
 
 
 app = Flask(__name__)

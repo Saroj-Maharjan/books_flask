@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, BooleanField, SelectField
-from wtforms.validators import DataRequired, Length, Email, EqualTo, InputRequired
+from wtforms.validators import DataRequired, Length, Email, EqualTo
 
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators = [DataRequired(), Length(min= 5, max= 20)])
@@ -23,10 +23,6 @@ class SearchForm(FlaskForm):
     book = StringField("ISBN, Title or Author", validators = [DataRequired()])
     submit = SubmitField('Search')
 
-
-def choiceValidator(form, field):
-    if field.data == -1:
-        raise ValidationError('Please select rating!!!')
 
 class BookDetailForm(FlaskForm):
     comment = StringField("Comment about the Book", validators = [DataRequired()])
